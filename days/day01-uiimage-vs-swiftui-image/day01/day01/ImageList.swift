@@ -4,70 +4,174 @@
 //
 //  7) SwiftUI/UIViewController에 "케이블 연결" 예시
 //  모든 성능 측정 도구를 실제로 적용
+//  ✅ 메모리 누수 & UI Hangs 해결 버전
 //
 
 import SwiftUI
 import UIKit
 import os
 
-// MARK: - SwiftUI 버전 (모든 도구 적용)
+// MARK: - SwiftUI 버전 (최적화 완료)
 let maxCount: Int = 1000
 
 struct SwiftUIImageList: View {
-  let image = UIImage(named: "sample")!
+  // ✅ 이미지 캐시 관리
+  @StateObject private var imageCache = ImageCacheManager.shared
   private let renderSignpost = Signpost.swiftUIRender(label: "ImageList")
   
   var body: some View {
     ScrollView {
       LazyVStack {
         ForEach(0..<maxCount, id: \.self) { index in
-          Image(uiImage: image)
-            .resizable()
-            .scaledToFit()
+          // ✅ 최적화된 이미지 뷰
+          OptimizedSwiftUIImage()
             .frame(height: 120)
             .padding(.horizontal)
         }
       }
     }
-    .coordinateSpace(name: "scroll") // 🎯 스크롤 감지를 위한 좌표 공간
-    .detectScrollWithSignpost(name: "SwiftUI_ImageList") // 🎯 스크롤 자동 감지
-    .showFPS() // 🎯 FPS 오버레이
-    .showMemory() // 🎯 메모리 오버레이
+    .coordinateSpace(name: "scroll")
+    .detectScrollWithSignpost(name: "SwiftUI_ImageList")
+    .showFPS()
+    .showMemory()
     .onAppear {
       PerformanceLogger.log("✅ SwiftUI 이미지 리스트 시작")
       MemorySampler.logCurrentMemory(label: "SwiftUI onAppear")
-      
-      // 렌더링 측정
       renderSignpost.begin()
     }
     .onDisappear {
       PerformanceLogger.log("❌ SwiftUI 이미지 리스트 종료")
       renderSignpost.end()
+      
+      // ✅ 메모리 정리
+      imageCache.clearCache()
     }
   }
 }
 
-// MARK: - UIKit 버전 (모든 도구 적용)
+// MARK: - 최적화된 SwiftUI 이미지 뷰
+private struct OptimizedSwiftUIImage: View {
+  @State private var preparedImage: UIImage?
+  
+  var body: some View {
+    Group {
+      if let image = preparedImage {
+        Image(uiImage: image)
+          .resizable()
+          .scaledToFit()
+      } else {
+        ProgressView()
+      }
+    }
+    .task {
+      // ✅ 백그라운드에서 이미지 디코딩
+      await loadAndPrepareImage()
+    }
+  }
+  
+  @MainActor
+  private func loadAndPrepareImage() async {
+    await Task.detached(priority: .userInitiated) {
+      guard let image = UIImage(named: "sample") else { return }
+      
+      // ✅ iOS 15+ preparingForDisplay() 사용
+      let prepared: UIImage
+      if #available(iOS 15.0, *) {
+        prepared = image.preparingForDisplay() ?? image
+      } else {
+        // iOS 15 미만은 수동 디코딩
+        prepared = Self.decodeImage(image) ?? image
+      }
+      
+      await MainActor.run {
+        self.preparedImage = prepared
+      }
+    }.value
+  }
+  
+  // iOS 15 미만을 위한 수동 이미지 디코딩
+  private static func decodeImage(_ image: UIImage) -> UIImage? {
+    guard let cgImage = image.cgImage else { return nil }
+    
+    let colorSpace = CGColorSpaceCreateDeviceRGB()
+    let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
+    
+    guard let context = CGContext(
+      data: nil,
+      width: cgImage.width,
+      height: cgImage.height,
+      bitsPerComponent: 8,
+      bytesPerRow: cgImage.width * 4,
+      space: colorSpace,
+      bitmapInfo: bitmapInfo.rawValue
+    ) else { return nil }
+    
+    let rect = CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height)
+    context.draw(cgImage, in: rect)
+    
+    guard let decodedImage = context.makeImage() else { return nil }
+    return UIImage(cgImage: decodedImage)
+  }
+}
+
+// MARK: - 이미지 캐시 매니저
+class ImageCacheManager: ObservableObject {
+  static let shared = ImageCacheManager()
+  
+  private var cache: [String: UIImage] = [:]
+  private let queue = DispatchQueue(label: "com.day01.imageCache", attributes: .concurrent)
+  
+  private init() {
+    // ✅ 메모리 워닝 감지
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(didReceiveMemoryWarning),
+      name: UIApplication.didReceiveMemoryWarningNotification,
+      object: nil
+    )
+  }
+  
+  deinit {
+    // ✅ Observer 제거
+    NotificationCenter.default.removeObserver(self)
+  }
+  
+  @objc private func didReceiveMemoryWarning() {
+    PerformanceLogger.log("⚠️ 메모리 워닝 - 캐시 정리")
+    clearCache()
+  }
+  
+  func clearCache() {
+    queue.async(flags: .barrier) { [weak self] in
+      self?.cache.removeAll()
+    }
+  }
+}
+
+// MARK: - UIKit 버전 (최적화 완료)
 
 class UIKitImageListViewController: UIViewController {
-  private let scrollView = UIScrollView()
-  private let stackView = UIStackView()
+  // ✅ UICollectionView로 변경 (재사용 가능)
+  private var collectionView: UICollectionView!
   
-  // 🎯 스크롤 감지 델리게이트
+  // ✅ 스크롤 감지 델리게이트
   private lazy var scrollDetector = ScrollDetectorDelegate(name: "UIKit_ImageList")
   
-  // 🎯 FPS/메모리 모니터
+  // ✅ FPS/메모리 모니터
   private var displayLink: CADisplayLink?
   private var lastTimestamp: CFTimeInterval = 0
   private var frameCount: Int = 0
-  private let memoryMonitor = MemoryMonitor(interval: 2.0)
+  private var memoryMonitor: MemoryMonitor?
   
-  // 🎯 성능 측정
+  // ✅ 성능 측정
   private let renderSignpost = Signpost.uikitRender(label: "ImageList")
   
   // 오버레이 레이블들
   private let fpsLabel = UILabel()
   private let memoryLabel = UILabel()
+  
+  // ✅ 준비된 이미지 캐시
+  private var preparedImage: UIImage?
   
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -75,9 +179,9 @@ class UIKitImageListViewController: UIViewController {
     PerformanceLogger.log("✅ UIKit 이미지 리스트 시작")
     MemorySampler.logCurrentMemory(label: "UIKit viewDidLoad")
     
-    setupUI()
-    loadImages()
+    setupCollectionView()
     setupOverlays()
+    prepareImage()
     
     renderSignpost.begin()
   }
@@ -85,9 +189,12 @@ class UIKitImageListViewController: UIViewController {
   override func viewDidAppear(_ animated: Bool) {
     super.viewDidAppear(animated)
     
-    // 🎯 FPS 모니터링 시작
+    // ✅ FPS 모니터링 시작
     startFPSMonitoring()
-    memoryMonitor.startMonitoring()
+    
+    // ✅ 메모리 모니터링 시작
+    memoryMonitor = MemoryMonitor(interval: 2.0)
+    memoryMonitor?.startMonitoring()
     
     // 렌더링 완료
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
@@ -100,51 +207,94 @@ class UIKitImageListViewController: UIViewController {
     
     PerformanceLogger.log("❌ UIKit 이미지 리스트 종료")
     stopFPSMonitoring()
-    memoryMonitor.stopMonitoring()
+    memoryMonitor?.stopMonitoring()
   }
   
   deinit {
+    // ✅ 리소스 정리
+    PerformanceLogger.log("🗑️ UIKit 이미지 리스트 deinit")
     stopFPSMonitoring()
+    memoryMonitor?.stopMonitoring()
+    memoryMonitor = nil
+    preparedImage = nil
+    collectionView = nil
   }
   
-  private func setupUI() {
+  // ✅ 이미지 사전 디코딩
+  private func prepareImage() {
+    Task.detached(priority: .userInitiated) { [weak self] in
+      guard let image = UIImage(named: "sample") else { return }
+      
+      // iOS 15+ preparingForDisplay() 사용
+      let prepared: UIImage
+      if #available(iOS 15.0, *) {
+        prepared = image.preparingForDisplay() ?? image
+      } else {
+        // 수동 디코딩
+        prepared = self?.decodeImage(image) ?? image
+      }
+      
+      await MainActor.run { [weak self] in
+        self?.preparedImage = prepared
+        self?.collectionView.reloadData()
+      }
+    }
+  }
+  
+  // 수동 이미지 디코딩 (iOS 15 미만)
+  private func decodeImage(_ image: UIImage) -> UIImage {
+    guard let cgImage = image.cgImage else { return image }
+    
+    let colorSpace = CGColorSpaceCreateDeviceRGB()
+    let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
+    
+    guard let context = CGContext(
+      data: nil,
+      width: cgImage.width,
+      height: cgImage.height,
+      bitsPerComponent: 8,
+      bytesPerRow: cgImage.width * 4,
+      space: colorSpace,
+      bitmapInfo: bitmapInfo.rawValue
+    ) else { return image }
+    
+    let rect = CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height)
+    context.draw(cgImage, in: rect)
+    
+    guard let decodedImage = context.makeImage() else { return image }
+    return UIImage(cgImage: decodedImage)
+  }
+  
+  private func setupCollectionView() {
     view.backgroundColor = .systemBackground
     
-    // ScrollView 설정
-    scrollView.translatesAutoresizingMaskIntoConstraints = false
-    scrollView.delegate = scrollDetector // 🎯 스크롤 감지 연결
-    view.addSubview(scrollView)
+    // ✅ UICollectionViewFlowLayout 설정
+    let layout = UICollectionViewFlowLayout()
+    layout.scrollDirection = .vertical
+    layout.minimumLineSpacing = 8
+    layout.itemSize = CGSize(width: UIScreen.main.bounds.width - 32, height: 120)
     
-    // StackView 설정
-    stackView.axis = .vertical
-    stackView.spacing = 8
-    stackView.translatesAutoresizingMaskIntoConstraints = false
-    scrollView.addSubview(stackView)
+    // ✅ UICollectionView 생성
+    collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+    collectionView.backgroundColor = .systemBackground
+    collectionView.translatesAutoresizingMaskIntoConstraints = false
+    collectionView.delegate = self
+    collectionView.dataSource = self
+    
+    // ✅ 셀 등록
+    collectionView.register(
+      OptimizedImageCell.self,
+      forCellWithReuseIdentifier: OptimizedImageCell.identifier
+    )
+    
+    view.addSubview(collectionView)
     
     NSLayoutConstraint.activate([
-      scrollView.topAnchor.constraint(equalTo: view.topAnchor),
-      scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-      scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-      scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-      
-      stackView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-      stackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-      stackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-      stackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-      stackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
+      collectionView.topAnchor.constraint(equalTo: view.topAnchor),
+      collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+      collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+      collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
     ])
-  }
-  
-  private func loadImages() {
-    guard let image = UIImage(named: "sample") else { return }
-    
-    // 100장의 이미지 추가
-    (0..<maxCount).forEach { _ in
-      let imageView = UIImageView(image: image)
-      imageView.contentMode = .scaleAspectFit
-      imageView.heightAnchor.constraint(equalToConstant: 120).isActive = true
-      stackView.addArrangedSubview(imageView)
-    }
   }
   
   // MARK: - 🎯 FPS 오버레이
@@ -184,7 +334,8 @@ class UIKitImageListViewController: UIViewController {
   }
   
   private func startFPSMonitoring() {
-    displayLink = CADisplayLink(target: self, selector: #selector(displayLinkTick))
+    // ✅ weak self로 순환 참조 방지
+    displayLink = CADisplayLink(target: WeakDisplayLinkTarget(target: self), selector: #selector(WeakDisplayLinkTarget.tick(_:)))
     displayLink?.add(to: .main, forMode: .common)
   }
   
@@ -193,7 +344,7 @@ class UIKitImageListViewController: UIViewController {
     displayLink = nil
   }
   
-  @objc private func displayLinkTick(displayLink: CADisplayLink) {
+  @objc func displayLinkTick(displayLink: CADisplayLink) {
     if lastTimestamp == 0 {
       lastTimestamp = displayLink.timestamp
       return
@@ -227,6 +378,86 @@ class UIKitImageListViewController: UIViewController {
     case 30..<40: return UIColor.orange.withAlphaComponent(0.8)
     default: return UIColor.red.withAlphaComponent(0.8)
     }
+  }
+}
+
+// MARK: - UICollectionView DataSource & Delegate
+
+extension UIKitImageListViewController: UICollectionViewDataSource, UICollectionViewDelegate {
+  func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+    return maxCount
+  }
+  
+  func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+    guard let cell = collectionView.dequeueReusableCell(
+      withReuseIdentifier: OptimizedImageCell.identifier,
+      for: indexPath
+    ) as? OptimizedImageCell else {
+      return UICollectionViewCell()
+    }
+    
+    // ✅ 준비된 이미지 사용
+    cell.configure(with: preparedImage)
+    return cell
+  }
+}
+
+// MARK: - 최적화된 이미지 셀
+
+class OptimizedImageCell: UICollectionViewCell {
+  static let identifier = "OptimizedImageCell"
+  
+  private let imageView = UIImageView()
+  
+  override init(frame: CGRect) {
+    super.init(frame: frame)
+    setupImageView()
+  }
+  
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+  
+  private func setupImageView() {
+    imageView.contentMode = .scaleAspectFit
+    imageView.translatesAutoresizingMaskIntoConstraints = false
+    contentView.addSubview(imageView)
+    
+    NSLayoutConstraint.activate([
+      imageView.topAnchor.constraint(equalTo: contentView.topAnchor),
+      imageView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+      imageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+      imageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16)
+    ])
+  }
+  
+  func configure(with image: UIImage?) {
+    imageView.image = image
+  }
+  
+  // ✅ 셀 재사용 시 이미지 정리
+  override func prepareForReuse() {
+    super.prepareForReuse()
+    imageView.image = nil
+  }
+  
+  deinit {
+    // ✅ 메모리 정리
+    imageView.image = nil
+  }
+}
+
+// MARK: - Weak DisplayLink Target (순환 참조 방지)
+
+class WeakDisplayLinkTarget {
+  private weak var target: UIKitImageListViewController?
+  
+  init(target: UIKitImageListViewController) {
+    self.target = target
+  }
+  
+  @objc func tick(_ displayLink: CADisplayLink) {
+    target?.displayLinkTick(displayLink: displayLink)
   }
 }
 

@@ -1,5 +1,9 @@
 # 6) Instruments에서 "정답" 뽑기 (Step-by-step)
 
+> 📊 **분석 결과**: [ANALYSIS_RESULTS.md](./ANALYSIS_RESULTS.md) 파일을 참고하세요.
+
+---
+
 ## 📱 사전 준비
 
 ### 1단계: 실기기 연결
@@ -86,6 +90,8 @@ Applications > Xcode > Contents > Applications > Instruments.app
 💡 팁: Summary 뷰에서 평균/최소/최대 확인 가능
 ```
 
+**📊 분석 결과는 [ANALYSIS_RESULTS.md](./ANALYSIS_RESULTS.md)를 참고하세요.**
+
 ---
 
 ### 3️⃣ Allocations (메모리 할당)
@@ -113,6 +119,8 @@ Applications > Xcode > Contents > Applications > Instruments.app
    누가 메모리를 더 효율적으로 쓰는가?
 ```
 
+**📊 분석 결과는 [ANALYSIS_RESULTS.md](./ANALYSIS_RESULTS.md)를 참고하세요.**
+
 ---
 
 ### 4️⃣ Leaks (메모리 누수)
@@ -133,6 +141,8 @@ Applications > Xcode > Contents > Applications > Instruments.app
 - Call Stack 확인
 - 어느 이미지 로딩 코드가 원인인지 추적
 ```
+
+**📊 분석 결과는 [ANALYSIS_RESULTS.md](./ANALYSIS_RESULTS.md)를 참고하세요.**
 
 ---
 
@@ -160,18 +170,6 @@ Applications > Xcode > Contents > Applications > Instruments.app
 4. 커스텀 Signpost 구간
    - 우리가 심어둔 측정 마커
 ```
-
----
-
-## 🎯 핵심 비교 지표
-
-| 항목 | SwiftUI | UIKit | 우승자 |
-|------|---------|-------|--------|
-| CPU 사용률 (%) | ? | ? | |
-| 평균 프레임 시간 (ms) | ? | ? | |
-| 스크롤 시작→종료 (ms) | ? | ? | |
-| 메모리 사용량 (MB) | ? | ? | |
-| 60fps 유지율 (%) | ? | ? | |
 
 ---
 
@@ -211,28 +209,6 @@ File > Recording Options > os_signpost
 3. **백그라운드 앱**: 다른 앱 종료하고 측정
 4. **기기 온도**: 과열되면 쓰로틀링 발생 → 식힌 후 재측정
 5. **시뮬레이터 금지**: 반드시 실기기에서!
-
----
-
-## 🎓 결론 도출
-
-측정 후 다음 질문에 답하기:
-
-1. **SwiftUI Image가 빠른가, UIKit UIImageView가 빠른가?**
-   - Time Profiler 결과:
-   - Signpost 결과:
-
-2. **메모리는 누가 효율적인가?**
-   - Allocations 결과:
-
-3. **스크롤 성능은?**
-   - FPS 비교:
-   - Hangs 발생 빈도:
-
-4. **실용적인 결론**:
-   - 100장 이하: 
-   - 1000장 이상:
-   - 추천 방식:
 
 ---
 
