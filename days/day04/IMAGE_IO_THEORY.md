@@ -448,3 +448,4 @@ if let exif = properties?[kCGImagePropertyExifDictionary] {
 
 *다음 단계: 실습 코드로 직접 EXIF 읽기를 구현해봅시다!*
 
+

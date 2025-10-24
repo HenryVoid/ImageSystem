@@ -459,3 +459,4 @@ func saveCameraPhoto(_ image: UIImage, location: CLLocation?, customData: [Strin
 
 *EXIF를 올바르게 활용하여 더 나은 사진 앱을 만들어보세요!*
 
+

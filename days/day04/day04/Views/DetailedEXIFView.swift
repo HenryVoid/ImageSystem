@@ -327,3 +327,4 @@ struct DetailRow: View {
     }
 }
 
+
