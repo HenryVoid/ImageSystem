@@ -1,0 +1,25 @@
+이 파일을 삭제하고 고해상도 이미지를 추가하세요.
+
+권장 사양:
+- 크기: 2000 × 1500 이상
+- 포맷: PNG 또는 JPEG
+- 내용: 디테일이 많은 사진 (풍경, 건물 등)
+
+준비 방법:
+1. iPhone 카메라로 촬영 후 AirDrop
+2. Unsplash.com에서 다운로드 (https://unsplash.com)
+3. 웹에서 고해상도 이미지 검색
+
+추가 방법:
+1. sample.txt 삭제
+2. 이미지 파일을 sample.imageset에 드래그
+3. Xcode에서 자동으로 Contents.json 업데이트
+
+샘플 이미지 없이도 학습 가능:
+- SF Symbols만으로도 대부분의 실습이 가능합니다
+- RenderingModeComparisonView: ✅ (SF Symbols 사용)
+- InterpolationQualityView: ✅ (SF Symbols 확대)
+- AspectRatioTestView: ⚠️ (샘플 이미지 권장)
+- ResizableOptionsView: ⚠️ (샘플 이미지 권장)
+- PerformanceBenchmarkView: ✅ (SF Symbols 사용)
+
