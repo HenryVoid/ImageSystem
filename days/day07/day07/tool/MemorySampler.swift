@@ -1,6 +1,6 @@
 //
 //  MemorySampler.swift
-//  day06
+//  day07
 //
 //  메모리 사용량 모니터링 도구
 //
@@ -62,5 +62,4 @@ class MemorySampler {
         return (result, diff)
     }
 }
-
 

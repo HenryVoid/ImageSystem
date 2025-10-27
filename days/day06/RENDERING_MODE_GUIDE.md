@@ -800,3 +800,4 @@ Image("photo")
 
 **다음 단계**: PERFORMANCE_GUIDE.md에서 성능 최적화 기법을 학습하세요!
 
+

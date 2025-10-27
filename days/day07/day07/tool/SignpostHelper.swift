@@ -1,6 +1,6 @@
 //
 //  SignpostHelper.swift
-//  day06
+//  day07
 //
 //  사인포스트(os_signpost) 헬퍼 - 구간 타이밍 측정
 //
@@ -63,6 +63,15 @@ class SignpostHelper {
 
 /// 간편 사용을 위한 전역 헬퍼들
 enum Signpost {
+    // 이미지 로딩 측정용
+    static func imageLoad(label: String = "") -> SignpostHelper {
+        SignpostHelper(
+            log: PerformanceLogger.loadingLog,
+            name: "Image_Load",
+            label: label
+        )
+    }
+    
     // 이미지 렌더링 측정용
     static func imageRender(label: String = "") -> SignpostHelper {
         SignpostHelper(
@@ -72,52 +81,22 @@ enum Signpost {
         )
     }
     
-    // 보간 계산 측정용
-    static func interpolation(label: String = "") -> SignpostHelper {
+    // 필터링 측정용
+    static func filtering(label: String = "") -> SignpostHelper {
         SignpostHelper(
-            log: PerformanceLogger.interpolationLog,
-            name: "Interpolation",
+            log: PerformanceLogger.filteringLog,
+            name: "Filter_Apply",
             label: label
         )
     }
     
-    // 스크롤 성능 측정용
-    static func scroll(label: String = "") -> SignpostHelper {
+    // 썸네일 생성 측정용
+    static func thumbnail(label: String = "") -> SignpostHelper {
         SignpostHelper(
-            log: PerformanceLogger.renderingLog,
-            name: "Scroll_Performance",
-            label: label
-        )
-    }
-    
-    // 이미지 로딩 측정용
-    static func imageLoad(label: String = "") -> SignpostHelper {
-        SignpostHelper(
-            log: PerformanceLogger.renderingLog,
-            name: "Image_Load",
+            log: PerformanceLogger.loadingLog,
+            name: "Thumbnail_Generate",
             label: label
         )
     }
 }
-
-// MARK: - 사용 예시
-/*
- // 간단 사용
- let helper = Signpost.imageRender(label: "Thumbnail")
- helper.begin()
- // ... 작업 ...
- helper.end()
- 
- // 클로저로 감싸기
- let result = Signpost.interpolation(label: "High Quality").measure {
-     // 보간 계산
-     return heavyInterpolation()
- }
- 
- // 비동기
- let data = await Signpost.imageLoad(label: "Network").measureAsync {
-     await fetchImageData()
- }
- */
-
 

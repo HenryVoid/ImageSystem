@@ -1,7 +1,7 @@
 {
-  "images" : [
+  "data" : [
     {
-      "filename" : "sample.txt",
+      "filename" : "sample3.webp",
       "idiom" : "universal"
     }
   ],
@@ -10,5 +10,3 @@
     "version" : 1
   }
 }
-
-
