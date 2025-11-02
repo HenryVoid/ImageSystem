@@ -1,8 +1,9 @@
 //
 //  MemorySampler.swift
-//  day08
+//  day09
 //
 //  메모리 사용량 측정
+//
 
 import Foundation
 import os.log
@@ -11,7 +12,7 @@ import os.log
 class MemorySampler {
     static let shared = MemorySampler()
     
-    private let log = OSLog(subsystem: "com.study.day08", category: "memory")
+    private let log = OSLog(subsystem: "com.study.day09", category: "memory")
     
     private init() {}
     
@@ -164,6 +165,4 @@ extension MemorySampler {
         return String(format: "%.2f MB", mb)
     }
 }
-
-
 

@@ -601,3 +601,5 @@ NotificationCenter.default.addObserver(
 
 **다음 단계**: PERFORMANCE_GUIDE.md에서 캐시 적용 전후 성능을 실제로 측정해봅니다! 📊
 
+
+

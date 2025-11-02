@@ -1,8 +1,9 @@
 //
 //  PerformanceLogger.swift
-//  day08
+//  day09
 //
 //  성능 측정을 위한 os_signpost 래퍼
+//
 
 import Foundation
 import os.log
@@ -12,7 +13,7 @@ import os.signpost
 class PerformanceLogger {
     static let shared = PerformanceLogger()
     
-    private let subsystem = "com.study.day08"
+    private let subsystem = "com.study.day09"
     private let log: OSLog
     
     private init() {
@@ -87,33 +88,57 @@ class PerformanceLogger {
     }
 }
 
-// MARK: - 편의 확장
+// MARK: - 라이브러리별 확장
 
 extension PerformanceLogger {
-    /// 이미지 로딩 시작 signpost
-    func beginImageLoad(url: String) -> OSSignpostID {
-        let id = beginSignpost(name: "Image_Load")
-        log("로딩 시작: \(url)", category: "loading")
+    /// 라이브러리별 이미지 로딩 시작
+    func beginLibraryLoad(library: String, url: String) -> OSSignpostID {
+        let name: StaticString
+        switch library {
+        case "SDWebImage":
+            name = "SDWebImage_Load"
+        case "Kingfisher":
+            name = "Kingfisher_Load"
+        case "Nuke":
+            name = "Nuke_Load"
+        default:
+            name = "Image_Load"
+        }
+        
+        let id = beginSignpost(name: name)
+        log("[\(library)] 로딩 시작: \(url)", category: "loading")
         return id
     }
     
-    /// 이미지 로딩 종료 signpost
-    func endImageLoad(id: OSSignpostID, url: String, success: Bool) {
-        endSignpost(name: "Image_Load", id: id)
+    /// 라이브러리별 이미지 로딩 종료
+    func endLibraryLoad(library: String, id: OSSignpostID, url: String, success: Bool) {
+        let name: StaticString
+        switch library {
+        case "SDWebImage":
+            name = "SDWebImage_Load"
+        case "Kingfisher":
+            name = "Kingfisher_Load"
+        case "Nuke":
+            name = "Nuke_Load"
+        default:
+            name = "Image_Load"
+        }
+        
+        endSignpost(name: name, id: id)
         let status = success ? "성공" : "실패"
-        log("로딩 \(status): \(url)", category: "loading")
+        log("[\(library)] 로딩 \(status): \(url)", category: "loading")
     }
     
     /// 캐시 히트
-    func logCacheHit(url: String) {
-        signpostEvent(name: "Cache_Hit", message: url)
-        log("✅ 캐시 히트: \(url)", category: "cache")
+    func logCacheHit(library: String, url: String) {
+        signpostEvent(name: "Cache_Hit", message: "[\(library)] \(url)")
+        log("[\(library)] ✅ 캐시 히트: \(url)", category: "cache")
     }
     
     /// 캐시 미스
-    func logCacheMiss(url: String) {
-        signpostEvent(name: "Cache_Miss", message: url)
-        log("❌ 캐시 미스: \(url)", category: "cache")
+    func logCacheMiss(library: String, url: String) {
+        signpostEvent(name: "Cache_Miss", message: "[\(library)] \(url)")
+        log("[\(library)] ❌ 캐시 미스: \(url)", category: "cache")
     }
 }
 
@@ -163,6 +188,4 @@ class PerformanceStats {
         """
     }
 }
-
-
 
