@@ -255,3 +255,5 @@ struct KingfisherImageCell: View {
     KingfisherGalleryView()
 }
 
+
+

@@ -254,3 +254,5 @@ class PerformanceLogger: ObservableObject {
     }
 }
 
+
+

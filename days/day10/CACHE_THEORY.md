@@ -564,3 +564,5 @@ ETag: "abc123"
 
 **다음 단계**: CACHE_STRATEGY.md에서 캐시 정책(LRU, TTL, 용량 제한)을 학습합니다! 📚
 
+
+
