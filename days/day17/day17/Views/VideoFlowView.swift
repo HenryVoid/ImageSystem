@@ -1,0 +1,146 @@
+//
+//  VideoFlowView.swift
+//  day17
+//
+//  전체 플로우 통합 뷰
+//
+
+import SwiftUI
+
+struct VideoFlowView: View {
+    @StateObject private var sessionManager = VideoSessionManager()
+    @StateObject private var permissionManager = PermissionManager()
+    @StateObject private var performanceMonitor = PerformanceMonitor()
+    @State private var showError = false
+    @State private var showPlayback = false
+    
+    var body: some View {
+        ZStack {
+            if permissionManager.isAllAuthorized {
+                VideoPreview(session: sessionManager.session)
+                    .ignoresSafeArea()
+                
+                VStack {
+                    // 성능 모니터
+                    HStack {
+                        PerformanceStatsView(monitor: performanceMonitor)
+                        Spacer()
+                    }
+                    .padding()
+                    
+                    Spacer()
+                    
+                    // 녹화 시간 표시
+                    if sessionManager.isRecording {
+                        HStack {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 12, height: 12)
+                                .opacity(0.8)
+                            
+                            Text(formatTime(sessionManager.recordingDuration))
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                        .padding(12)
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(8)
+                        .padding(.top, 20)
+                    }
+                    
+                    // 컨트롤 버튼들
+                    HStack(spacing: 40) {
+                        // 저장된 동영상 보기 버튼
+                        Button(action: {
+                            showPlayback = true
+                        }) {
+                            Image(systemName: "list.bullet")
+                                .font(.system(size: 24))
+                                .foregroundColor(.white)
+                                .frame(width: 60, height: 60)
+                                .background(Color.black.opacity(0.6))
+                                .clipShape(Circle())
+                        }
+                        
+                        // 카메라 전환 버튼
+                        Button(action: {
+                            sessionManager.switchCamera()
+                        }) {
+                            Image(systemName: "camera.rotate.fill")
+                                .font(.system(size: 30))
+                                .foregroundColor(.white)
+                                .frame(width: 60, height: 60)
+                                .background(Color.black.opacity(0.6))
+                                .clipShape(Circle())
+                        }
+                        .disabled(sessionManager.isRecording)
+                        
+                        // 녹화 버튼
+                        Button(action: {
+                            if sessionManager.isRecording {
+                                sessionManager.stopRecording()
+                            } else {
+                                sessionManager.startRecording()
+                            }
+                        }) {
+                            ZStack {
+                                Circle()
+                                    .fill(sessionManager.isRecording ? Color.red : Color.white)
+                                    .frame(width: 70, height: 70)
+                                
+                                if sessionManager.isRecording {
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color.white)
+                                        .frame(width: 20, height: 20)
+                                } else {
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 60, height: 60)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.bottom, 40)
+                }
+            } else if permissionManager.isAnyDenied {
+                PermissionDeniedView(permissionManager: permissionManager)
+            } else {
+                PermissionRequestView(permissionManager: permissionManager)
+            }
+        }
+        .onAppear {
+            sessionManager.startSession()
+            performanceMonitor.startMonitoring()
+        }
+        .onDisappear {
+            sessionManager.stopSession()
+            performanceMonitor.stopMonitoring()
+        }
+        .alert("오류", isPresented: $showError) {
+            Button("확인", role: .cancel) { }
+        } message: {
+            if let error = sessionManager.error {
+                Text(error.localizedDescription)
+            }
+        }
+        .onChange(of: sessionManager.error) { _, newError in
+            if newError != nil {
+                showError = true
+            }
+        }
+        .sheet(isPresented: $showPlayback) {
+            PlaybackView()
+        }
+    }
+    
+    private func formatTime(_ time: TimeInterval) -> String {
+        let minutes = Int(time) / 60
+        let seconds = Int(time) % 60
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+}
+
+#Preview {
+    VideoFlowView()
+}
+
